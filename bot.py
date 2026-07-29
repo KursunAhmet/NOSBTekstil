@@ -1,26 +1,49 @@
 import os
 import requests
+import json
 
-# Secrets'tan gelecek bilgiler
+# Ortam Değişkenleri
 BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
+OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
 
-def gunluk_bulten_hazirla():
-    rapor = """
-📍 **NİĞDE OSB & TEKSTİL SEKTÖRÜ GÜNLÜK BÜLTENİ**
-📅 *Günün Gelişmeleri*
---------------------------------------------------
-🔹 **Niğde OSB Önemli Sanayi Notları:**
-• **Migiteks Tekstil:** Tesisin ilk fazı 90 milyon $ yatırımla tamamlanarak yıllık 7 bin ton yerli likra (spandeks) üretimine başladı. 3. faz bittiğinde 240 milyon $ yatırım ve 35.000 ton kapasite hedefleniyor.
-• **Biska Tekstil:** 150 bin m² alanda 3 etaplı Open-End İplik üretim tesisi yatırımı ve sanayi kapasite artışı devam ediyor.
+def ai_bulten_olustur():
+    url = "https://openrouter.ai/api/v1/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    
+    prompt = """
+Sen Niğde OSB ve Tekstil sektörü için uzman bir sanayi analistisin. 
+Bana bugün için Telegram'dan gönderilmeye uygun, kısa, vurucu ve profesyonel bir sabah bülteni hazırla.
 
-🔹 **Tekstil & Ham Madde Genel Durum:**
-• Pamuk, iplik ve elyaf piyasalarındaki fiyat değişimleri takip ediliyor.
-• Bölgesel istihdam ve teşvik fırsatları Niğde OSB'yi tekstilde cazibe merkezi yapmaya devam ediyor.
---------------------------------------------------
-💡 *Bu bülten GitHub Actions & DeepSeek V4 & Python otomasyonu ile Levent GÜLDEREN tarafından gönderilmiştir.*
+Bültende şu konulara odaklan:
+1. Niğde OSB (Organize Sanayi Bölgesi) yatırımları, tekstil/elyaf/iplik fabrikaları (Migiteks, Biska vb.) ve sanayi haberleri.
+2. Türkiye genel tekstil sektörü, pamuk/iplik piyasaları ve ihracat durumları.
+3. Global piyasada tekstil sektörü ile ilgili haberler ve olaylar.
+4. Stajyer bir mühendis/yönetici adayı için günün kısa tavsiyesi veya dikkat edilmesi gereken 1 teknik not.
+
+Format:
+- Emoji ve Markdown başlıkları kullan (Kalın yazılar, liste işaretleri vb.).
+- Çok uzun olmasın, mobil ekranda 1-2 kaydırmada okunabilsin.
+- Sonunda "🤖 DeepSeek V4 Flash AI Otomasyonu ile Üretilmiştir" imzası olsun.
 """
-    return rapor
+
+    payload = {
+        "model": "deepseek/deepseek-v4-flash",
+        "messages": [
+            {"role": "user", "content": prompt}
+        ]
+    }
+    
+    try:
+        response = requests.post(url, headers=headers, data=json.dumps(payload), timeout=30)
+        data = response.json()
+        bulten = data['choices'][0]['message']['content']
+        return bulten
+    except Exception as e:
+        return f"⚠️ Bülten oluşturulurken bir hata oluştu: {str(e)}"
 
 def telegrama_gonder(mesaj):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
@@ -32,5 +55,8 @@ def telegrama_gonder(mesaj):
     requests.post(url, json=payload)
 
 if __name__ == "__main__":
-    bulten = gunluk_bulten_hazirla()
-    telegrama_gonder(bulten)
+    print("AI Bülten üretiliyor (DeepSeek V4 Flash)...")
+    canli_bulten = ai_bulten_olustur()
+    print("Telegram'a gönderiliyor...")
+    telegrama_gonder(canli_bulten)
+    print("İşlem tamamlandı!")
