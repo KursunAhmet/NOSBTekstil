@@ -6,7 +6,21 @@ BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
 
+def telegrama_gonder(mesaj):
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    # Formatlama hatası yüzünden Telegram'ın mesajı reddetmesini önlemek için 
+    # parse_mode kullanmıyoruz (düz metin olarak atacak)
+    payload = {
+        "chat_id": CHAT_ID,
+        "text": mesaj
+    }
+    requests.post(url, json=payload)
+
 def ai_bulten_olustur():
+    # Değişken kontrolü
+    if not OPENROUTER_API_KEY:
+        return "⚠️ HATA: OPENROUTER_API_KEY GitHub Secrets tarafında bulunamadı!"
+    
     url = "https://openrouter.ai/api/v1/chat/completions"
     
     headers = {
@@ -24,11 +38,10 @@ Bültende şu konulara odaklan:
 1. Niğde OSB (Organize Sanayi Bölgesi) yatırımları, tekstil/elyaf/iplik fabrikaları (Migiteks, Biska vb.) ve sanayi haberleri.
 2. Türkiye genel tekstil sektörü, pamuk/iplik piyasaları ve ihracat durumları.
 3. Global piyasada tekstil sektörü ile ilgili haberler ve olaylar.
-4. Stajyer bir mühendis/yönetici adayı için günün kısa tavsiyesi veya dikkat edilmesi gereken 1 teknik not.
+4. Stajyer bir mühendis/yönetici adayı için günün kısa tavsiyesi.
 
 Format:
-- Emoji ve Markdown başlıkları kullan (Kalın yazılar, liste işaretleri vb.).
-- Çok uzun olmasın, mobil ekranda 1-2 kaydırmada okunabilsin.
+- Mobil ekranda rahat okunsun.
 - Sonunda "🤖 DeepSeek V4 Flash AI Otomasyonu ile Üretilmiştir" imzası olsun.
 """
 
@@ -43,25 +56,17 @@ Format:
         response = requests.post(url, headers=headers, data=json.dumps(payload), timeout=45)
         response_json = response.json()
         
-        # OpenRouter bir hata döndürdüyse hatayı Telegram'a bas
         if "error" in response_json:
-            return f"⚠️ OpenRouter API Hatası: {response_json['error']['message']}"
+            return f"⚠️ OpenRouter Dönüş Hatası:\n{json.dumps(response_json['error'], indent=2)}"
             
-        bulten = response_json['choices'][0]['message']['content']
-        return bulten
-        
+        if "choices" in response_json and len(response_json["choices"]) > 0:
+            return response_json['choices'][0]['message']['content']
+        else:
+            return f"⚠️ Yanıt Yapısı Geçersiz:\n{json.dumps(response_json, indent=2)}"
+            
     except Exception as e:
-        return f"⚠️ Python Kod Hatası: {str(e)}"
-
-def telegrama_gonder(mesaj):
-    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-    payload = {
-        "chat_id": CHAT_ID,
-        "text": mesaj,
-        "parse_mode": "Markdown"
-    }
-    requests.post(url, json=payload)
+        return f"⚠️ Python Kod İstek Hatası: {str(e)}"
 
 if __name__ == "__main__":
-    canli_bulten = ai_bulten_olustur()
-    telegrama_gonder(canli_bulten)
+    bulten = ai_bulten_olustur()
+    telegrama_gonder(bulten)
