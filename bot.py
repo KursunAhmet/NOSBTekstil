@@ -6,21 +6,7 @@ BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
 
-def telegrama_gonder(mesaj):
-    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-    # Formatlama hatası yüzünden Telegram'ın mesajı reddetmesini önlemek için 
-    # parse_mode kullanmıyoruz (düz metin olarak atacak)
-    payload = {
-        "chat_id": CHAT_ID,
-        "text": mesaj
-    }
-    requests.post(url, json=payload)
-
 def ai_bulten_olustur():
-    # Değişken kontrolü
-    if not OPENROUTER_API_KEY:
-        return "⚠️ HATA: OPENROUTER_API_KEY GitHub Secrets tarafında bulunamadı!"
-    
     url = "https://openrouter.ai/api/v1/chat/completions"
     
     headers = {
@@ -30,19 +16,36 @@ def ai_bulten_olustur():
         "X-Title": "NOSB Tekstil Bulten Bot"
     }
     
+    # GELİŞTİRİLMİŞ VE KATI KURALLI PROMPT
     prompt = """
-Sen Niğde OSB ve Tekstil sektörü için uzman bir sanayi analistisin. 
-Bana bugün için Telegram'dan gönderilmeye uygun, kısa, vurucu ve profesyonel bir sabah bülteni hazırla.
+Sen global ve yerel tekstil piyasalarını, emtia borsalarını ve sanayi devlerini anlık takip eden kıdemli bir Sektör Analistisin. 
+Bana Telegram üzerinden yayınlanmaya hazır, zengin emojili, yüksek kaliteli ve profesyonel bir sabah bülteni hazırla.
 
-Bültende şu konulara odaklan:
-1. Niğde OSB (Organize Sanayi Bölgesi) yatırımları, tekstil/elyaf/iplik fabrikaları (Migiteks, Biska vb.) ve sanayi haberleri.
-2. Türkiye genel tekstil sektörü, pamuk/iplik piyasaları ve ihracat durumları.
-3. Global piyasada tekstil sektörü ile ilgili haberler ve olaylar.
-4. Stajyer bir mühendis/yönetici adayı için günün kısa tavsiyesi.
+⚠️ ÇOK KESİN KURAL:
+"Tabii ki", "İşte bülteniniz", "Merhaba" gibi HİÇBİR giriş/açılış cümlesi YAZMA. Doğrudan başlıktan başla!
 
-Format:
-- Mobil ekranda rahat okunsun.
-- Sonunda "🤖 DeepSeek V4 Flash AI Otomasyonu ile Üretilmiştir" imzası olsun.
+BÜLTEN İÇERİK MİMARİSİ:
+
+📌 **GLOBAL TEKSTİL & EMTİA PİYASALARI**
+• Cotton #2 (Cotlook A), Brent Petrol ve Polyester Elyaf fiyat trendleri.
+• ABD (USDA raporları), Çin, Hindistan ve Pakistan pamuk rekolte/stok durumları.
+• AB Yeşil Mutabakatı, Dijital Ürün Pasaportu (DPP) ve Karbon Vergisi güncellemeleri.
+• Asya üreticileri (Bangladeş, Vietnam) ve küresel tedarik zinciri değişimleri.
+
+🇹🇷 **TÜRKİYE İHRACAT & HAM MADDE PİYASASI**
+• Türkiye iplik (Open-End, Ring) ve kumaş piyasasındaki fiyat/talep hareketleri.
+• İhracat pazarları (Almanya, İtalya, ABD) ve hazır giyim sipariş durumları.
+
+🏭 **NİĞDE OSB & BÖLGESEL SANAYİ BAKIŞI**
+• Niğde OSB tekstil/elyaf/iplik devlerinin (Migiteks, Biska vb.) genel sanayi durumu, lojistik ve teşvik fırsatları.
+
+💡 **GÜNÜN MÜHENDİSLİK & YÖNETİM TAVSİYESİ**
+• Stajyer/Yönetici adayı için sahaya, verimliliğe veya kalite kontrole dair 1 cümlelik profesyonel öğüt.
+
+Biçimlendirme Kriterleri:
+- Bol ve anlamlı emojiler kullan (🧵, 📊, 🌍, 🌾, 🏭, 💡).
+- Şık ve okuması kolay bir düzen sun.
+- En sona "🤖 *DeepSeek V4 Flash AI Otomasyonu ile Üretilmiştir*" imzası ekle.
 """
 
     payload = {
@@ -57,15 +60,20 @@ Format:
         response_json = response.json()
         
         if "error" in response_json:
-            return f"⚠️ OpenRouter Dönüş Hatası:\n{json.dumps(response_json['error'], indent=2)}"
+            return f"⚠️ OpenRouter API Hatası: {response_json['error']['message']}"
             
-        if "choices" in response_json and len(response_json["choices"]) > 0:
-            return response_json['choices'][0]['message']['content']
-        else:
-            return f"⚠️ Yanıt Yapısı Geçersiz:\n{json.dumps(response_json, indent=2)}"
-            
+        return response_json['choices'][0]['message']['content']
+        
     except Exception as e:
-        return f"⚠️ Python Kod İstek Hatası: {str(e)}"
+        return f"⚠️ Python Kod Hatası: {str(e)}"
+
+def telegrama_gonder(mesaj):
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    payload = {
+        "chat_id": CHAT_ID,
+        "text": mesaj
+    }
+    requests.post(url, json=payload)
 
 if __name__ == "__main__":
     bulten = ai_bulten_olustur()
