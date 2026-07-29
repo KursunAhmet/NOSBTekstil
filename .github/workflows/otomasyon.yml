@@ -1,0 +1,28 @@
+name: Niğde OSB Sabah Bülteni Otomasyonu
+
+on:
+  schedule:
+    # TSİ 08:00 (UTC 05:00)
+    - cron: '0 5 * * *'
+  workflow_dispatch:
+
+jobs:
+  bulten_gonder:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Depoyu Klonla
+        uses: actions/checkout@v3
+
+      - name: Python Kur
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Kütüphaneleri Yükle
+        run: pip install requests
+
+      - name: Botu Çalıştır ve Mesaj At
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python bot.py
