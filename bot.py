@@ -2,16 +2,18 @@ import os
 import requests
 import json
 
-# Ortam Değişkenleri
 BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
 
 def ai_bulten_olustur():
     url = "https://openrouter.ai/api/v1/chat/completions"
+    
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://github.com/KursunAhmet/NOSBTekstil",
+        "X-Title": "NOSB Tekstil Bulten Bot"
     }
     
     prompt = """
@@ -38,12 +40,17 @@ Format:
     }
     
     try:
-        response = requests.post(url, headers=headers, data=json.dumps(payload), timeout=30)
-        data = response.json()
-        bulten = data['choices'][0]['message']['content']
+        response = requests.post(url, headers=headers, data=json.dumps(payload), timeout=45)
+        response_json = response.json()
+        
+        if "error" in response_json:
+            return f"⚠️ OpenRouter API Hatası: {response_json['error']['message']}"
+            
+        bulten = response_json['choices'][0]['message']['content']
         return bulten
+        
     except Exception as e:
-        return f"⚠️ Bülten oluşturulurken bir hata oluştu: {str(e)}"
+        return f"⚠️ Python Hatası Oluştu: {str(e)}"
 
 def telegrama_gonder(mesaj):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
@@ -52,11 +59,8 @@ def telegrama_gonder(mesaj):
         "text": mesaj,
         "parse_mode": "Markdown"
     }
-    requests.post(url, json=payload)
+    res = requests.post(url, json=payload)
 
 if __name__ == "__main__":
-    print("AI Bülten üretiliyor (DeepSeek V4 Flash)...")
     canli_bulten = ai_bulten_olustur()
-    print("Telegram'a gönderiliyor...")
     telegrama_gonder(canli_bulten)
-    print("İşlem tamamlandı!")
